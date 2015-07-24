@@ -6,7 +6,9 @@ The application will store all of the data in an sqlite3 db and has its own buil
 # Installing
 You must have Go installed on the machine you are building. You can build the app and then use just the binary along with all of the other files, if you want. 
 
-Pull the code and run "go build". This will create a binary called "corp_member_tracking". Make sure it is executable, and then run it.
+Pull the code and run "go get" and then "go build". This will create a binary called "corp_member_tracking". Make sure it is executable, and then run it.
+
+Alternatively, if you are lazy and using linux, I have included a compiled binary.
 
 # Configuration
 In the config file there are some things that need to be changed.

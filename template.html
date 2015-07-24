@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="utf-8">
+        <meta http-equiv="X-UA-Compatible" content="IE=edge">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <link href="/static/bootstrap/css/bootstrap.css" rel="stylesheet">
+    </head>
+    <body>
+        <div class="col-md-10 col-md-offset-1">
+            <div class="row">
+                <center>
+                    <h2>{{.Title}} - {{.Date}}</h2>
+                </center>
+            </div>
+            <div class="row">
+                <div class="col-md-4 col-md-offset-1">
+                    <div class="row">
+                        <h3>Joins: {{.JoinCount}}</h3>
+                    </div>
+                    <br>
+                    <div class="row">
+                        <table class="table table-condensed">
+                            <thead>
+                                <tr>
+                                    <th>Char Name</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{range .Joins}}
+                                <tr>
+                                    <td>{{.CharName}}</td>
+                                    <td>{{datetime .EventDate}}</td>
+                                </tr>
+                                {{end}}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="col-md-4 col-md-offset-1">
+                    <div class="row">
+                        <h3>Leaves: {{.LeaveCount}}</h3>
+                    </div>
+                    <br>
+                    <div class="row">
+                        <table class="table table-condensed">
+                            <thead>
+                                <tr>
+                                    <th>Char Name</th>
+                                    <th>Date</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {{range .Leaves}}
+                                <tr>
+                                    <td>{{.CharName}}</td>
+                                    <td>{{datetime .EventDate}}</td>
+                                </tr>
+                                {{end}}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+        <script src="/static/bootstrap/js/bootstrap.min.js"></script>
+    </body>
+</html>

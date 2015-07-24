@@ -13,3 +13,8 @@ In the config file there are some things that need to be changed.
 1. You must set the API information (KeyID and vCode). The API must be a CEO API with at least Notifications enabled.
 2. (Optional) You can set the log directory. If nothing is set, the base directory will be used.
 3. (Optional) You can change the ip/port the webserver listens on. The default is all IP's, port 5555
+
+# Usage
+Run the application. Once it is running, you can point your browser to whatever you set it to listen on (default is localhost:5555).
+This will show the stats for the current month. If you wish to change the month it is showing stats for, put it in YYYY-MM format in the URL.
+Example: http://localhost:5555/2015-06 would tell it to look for June 2015 stats.

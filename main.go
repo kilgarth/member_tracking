@@ -15,7 +15,6 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/robfig/config"
-	//"io/ioutil"
 )
 
 var conf *config.Config
@@ -83,16 +82,33 @@ func main() {
 	vcode, _ := conf.String("DEFAULT", "vCode")
 
 	initDB()
-	getNotifications(keyid, vcode)
 
+	//Setup the timer. This pulls notifications from the API every 21 minutes. The cache timer is 20 minutes, so it should be ok.
+	//Some endeavouring dev could probably modify this so that it gets the cache timer from the API and checks at that time, but :effort:
+	t := time.NewTicker(time.Minute * 21).C
+	go func() {
+		for {
+			select {
+			case <-t:
+				getNotifications(keyid, vcode)
+			}
+		}
+	}()
+
+	//This is the part that listens and handles the incoming http connections.
 	http.HandleFunc("/", getStats)
+
+	//This part is so that the static files actually load, mainly the css and js shit.
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
+
 	http.ListenAndServe(":5555", nil)
 
 }
 
 func getNotifications(keyid int, vcode string) {
 	ids := &Records{}
+
+	//Make the request to the API
 	req, err := http.NewRequest("GET", fmt.Sprintf("https://api.eveonline.com/Char/Notifications.xml.aspx?keyid=%d&vcode=%s", keyid, vcode), nil)
 	client := &http.Client{}
 	res, err := client.Do(req)
@@ -109,6 +125,7 @@ func getNotifications(keyid int, vcode string) {
 		return
 	}
 
+	//Now that we have the content from CCP and we have made sure we got a valid result, lets decode it into something we can work with
 	d := xml.NewDecoder(res.Body)
 	decoded := &NotificationHeaders{}
 	err = d.Decode(&decoded)
@@ -117,6 +134,7 @@ func getNotifications(keyid int, vcode string) {
 		log.Printf("Error decoding header API data: %s", err)
 	}
 
+	//Now that its decoded, lets loop through the notifications and pull out the joins (128) and leaves (21)
 	for _, v := range decoded.Notifications {
 		if v.TypeID == 21 || v.TypeID == 128 {
 			sentDate, err := time.Parse("2006-01-02 15:04:05", v.SentDate)
@@ -126,10 +144,13 @@ func getNotifications(keyid int, vcode string) {
 			ids.Events = append(ids.Events, InsertData{CharID: v.SenderID, SenderName: v.SenderName, NotificationID: v.NotificationID, NotificationTypeID: v.TypeID, Date: sentDate})
 		}
 	}
+
+	//Now that we have only the notifications we care about, lets store it in the db.
 	storeData(ids)
 }
 
 func initDB() {
+	//Initialize the DB connection. Will create the file if it does not exist
 	db, err := sql.Open("sqlite3", "./corp_member_tracking.db")
 	if err != nil {
 		log.Printf("Error creating database: %s", err)
@@ -144,6 +165,8 @@ func initDB() {
 			notificationTypeID integer not null,
 			eventDate	timestamp not null
 		)`
+
+	//Setup the table if it doesn't already exist
 	_, err = db.Exec(sql)
 	if err != nil {
 		log.Printf("Error creating table: %s", err)
@@ -151,12 +174,14 @@ func initDB() {
 }
 
 func storeData(data *Records) {
+	//Open the connection to the db file
 	db, err := sql.Open("sqlite3", "./corp_member_tracking.db")
 	if err != nil {
 		log.Printf("Error opening database: %s", err)
 	}
-	for _, v := range data.Events {
 
+	//Lets loop the data passed to us and store it
+	for _, v := range data.Events {
 		stmt, err := db.Prepare("INSERT OR REPLACE INTO member_tracking (notificationID, charID, charName, notificationTypeID, eventDate) VALUES (?,?,?,?,?);")
 		if err != nil {
 			log.Printf("Error preparing SQL SELECT: %s", err)

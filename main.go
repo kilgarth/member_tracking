@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"database/sql"
+	"encoding/json"
 	"encoding/xml"
 	"flag"
 
@@ -80,6 +81,7 @@ func main() {
 
 	keyid, _ := conf.Int("DEFAULT", "KeyID")
 	vcode, _ := conf.String("DEFAULT", "vCode")
+	listenOn, _ := conf.String("DEFAULT", "listen")
 
 	initDB()
 
@@ -101,7 +103,7 @@ func main() {
 	//This part is so that the static files actually load, mainly the css and js shit.
 	http.Handle("/static/", http.StripPrefix("/static/", http.FileServer(http.Dir("static"))))
 
-	http.ListenAndServe(":5555", nil)
+	http.ListenAndServe(listenOn, nil)
 
 }
 
@@ -204,6 +206,12 @@ func getStats(w http.ResponseWriter, r *http.Request) {
 		EventDate time.Time
 	}
 
+	type ChartData struct {
+		Categories template.JS
+		Join       template.JS
+		Leave      template.JS
+	}
+
 	type TmplData struct {
 		Title      string
 		Joins      []Char
@@ -211,6 +219,7 @@ func getStats(w http.ResponseWriter, r *http.Request) {
 		Date       string
 		JoinCount  int
 		LeaveCount int
+		ChartData  ChartData
 	}
 
 	q := r.URL.Path[1:]
@@ -266,6 +275,77 @@ func getStats(w http.ResponseWriter, r *http.Request) {
 	}
 	tmplData.JoinCount = j
 	tmplData.LeaveCount = l
+
+	//This whole next section is a giant clusterfuck, but it prints out a nice pretty graph!
+
+	sql = `SELECT strftime("%m-%d",eventDate) AS day, notificationTypeID, COUNT(*) as count
+FROM member_tracking
+WHERE strftime("%Y-%m", eventDate) = ?
+GROUP BY strftime("%m-%d",eventDate), notificationTypeID
+ORDER BY day ASC`
+
+	stmt, err = db.Prepare(sql)
+	if err != nil {
+		log.Printf("Error preparing statement: %s", err)
+		return
+	}
+
+	rows, err = stmt.Query(q)
+	if err != nil {
+		log.Printf("There was an error executing the statement: %s")
+		return
+	}
+
+	defer rows.Close()
+
+	var day string
+	var notificationTypeID, count int
+
+	joinMap := make(map[string]int)
+	leaveMap := make(map[string]int)
+	i := 0
+	for rows.Next() {
+		err = rows.Scan(&day, &notificationTypeID, &count)
+		if err != nil {
+			log.Printf("Scan error: %s", err)
+			continue
+		}
+		joinMap[day] = 0
+		leaveMap[day] = 0
+
+		if notificationTypeID == 21 {
+			leaveMap[day] = count
+		}
+		if notificationTypeID == 128 {
+			joinMap[day] = count
+		}
+		i = i + 1
+	}
+
+	categories := make([]string, len(joinMap))
+	joinData := make([]int, len(joinMap))
+	leaveData := make([]int, len(joinMap))
+
+	i = 0
+	for k, v := range joinMap {
+		joinData[i] = v
+		categories[i] = k
+		i = i + 1
+	}
+	i = 0
+	for _, v := range leaveMap {
+		leaveData[i] = v
+		i = i + 1
+	}
+
+	cat, _ := json.Marshal(categories)
+	tmplData.ChartData.Categories = template.JS(cat)
+	join, _ := json.Marshal(joinData)
+	tmplData.ChartData.Join = template.JS(join)
+	leave, _ := json.Marshal(leaveData)
+	tmplData.ChartData.Leave = template.JS(leave)
+
+	//This is where the clusterfuck ends.
 
 	mainTemplate, err := template.New("template.html").Funcs(tFuncMap).ParseFiles("template.html")
 	if err != nil {

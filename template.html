@@ -5,12 +5,43 @@
         <meta http-equiv="X-UA-Compatible" content="IE=edge">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <link href="/static/bootstrap/css/bootstrap.css" rel="stylesheet">
+        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+        <script src="http://code.highcharts.com/highcharts.js"></script>
+
+        <script>
+            $(function () {
+                $("#container").highcharts({
+                    chart: {
+                        type: 'line'
+                    },
+                    title: {
+                        text: 'Join vs Leave'
+                    },
+                    xAxis: {
+                        categories: {{.ChartData.Categories}}
+                    },
+                    yAxis: {
+                        title: {
+                            text: 'Number of Join/Leave'
+                        }
+                    },
+                    series: [{
+                        name: 'Join',
+                        data: {{.ChartData.Join}}
+                    }, {
+                        name: 'Leave',
+                        data: {{.ChartData.Leave}}
+                    }]
+                });
+            });
+        </script>
     </head>
     <body>
         <div class="col-md-10 col-md-offset-1">
             <div class="row">
                 <center>
                     <h2>{{.Title}} - {{.Date}}</h2>
+                    <div id="container"></div>
                 </center>
             </div>
             <div class="row">
@@ -64,7 +95,7 @@
                 </div>
             </div>
         </div>
-        <script src="//ajax.googleapis.com/ajax/libs/jquery/1.10.2/jquery.min.js"></script>
+
         <script src="/static/bootstrap/js/bootstrap.min.js"></script>
     </body>
 </html>

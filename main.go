@@ -5,12 +5,13 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"sort"
 	"time"
 
 	"database/sql"
-	"encoding/json"
 	"encoding/xml"
 	"flag"
+	"strings"
 
 	"html/template"
 
@@ -206,12 +207,6 @@ func getStats(w http.ResponseWriter, r *http.Request) {
 		EventDate time.Time
 	}
 
-	type ChartData struct {
-		Categories template.JS
-		Join       template.JS
-		Leave      template.JS
-	}
-
 	type TmplData struct {
 		Title      string
 		Joins      []Char
@@ -219,7 +214,8 @@ func getStats(w http.ResponseWriter, r *http.Request) {
 		Date       string
 		JoinCount  int
 		LeaveCount int
-		ChartData  ChartData
+		JoinArr    template.JS
+		LeaveArr   template.JS
 	}
 
 	q := r.URL.Path[1:]
@@ -303,6 +299,10 @@ ORDER BY day ASC`
 
 	joinMap := make(map[string]int)
 	leaveMap := make(map[string]int)
+
+	days := make(map[int]string)
+	var keys []int
+
 	i := 0
 	for rows.Next() {
 		err = rows.Scan(&day, &notificationTypeID, &count)
@@ -310,6 +310,7 @@ ORDER BY day ASC`
 			log.Printf("Scan error: %s", err)
 			continue
 		}
+		days[i] = day
 		joinMap[day] = 0
 		leaveMap[day] = 0
 
@@ -322,28 +323,22 @@ ORDER BY day ASC`
 		i = i + 1
 	}
 
-	categories := make([]string, len(joinMap))
-	joinData := make([]int, len(joinMap))
-	leaveData := make([]int, len(joinMap))
-
-	i = 0
-	for k, v := range joinMap {
-		joinData[i] = v
-		categories[i] = k
-		i = i + 1
-	}
-	i = 0
-	for _, v := range leaveMap {
-		leaveData[i] = v
-		i = i + 1
+	for k := range days {
+		keys = append(keys, k)
 	}
 
-	cat, _ := json.Marshal(categories)
-	tmplData.ChartData.Categories = template.JS(cat)
-	join, _ := json.Marshal(joinData)
-	tmplData.ChartData.Join = template.JS(join)
-	leave, _ := json.Marshal(leaveData)
-	tmplData.ChartData.Leave = template.JS(leave)
+	tJ := make([]string, len(keys))
+	tL := make([]string, len(keys))
+
+	sort.Ints(keys)
+	for k := range keys {
+		d := days[k]
+		tJ[k] = fmt.Sprintf("['%s', %d]", d, joinMap[d])
+		tL[k] = fmt.Sprintf("['%s', %d]", d, leaveMap[d])
+	}
+
+	tmplData.JoinArr = template.JS(strings.Join(tJ, ","))
+	tmplData.LeaveArr = template.JS(strings.Join(tL, ","))
 
 	//This is where the clusterfuck ends.
 

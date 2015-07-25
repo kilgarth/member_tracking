@@ -10,28 +10,27 @@
 
         <script>
             $(function () {
-                $("#container").highcharts({
+                var chart = new Highcharts.Chart({
                     chart: {
-                        type: 'line'
+                        type: 'line',
+                        renderTo: 'container'
+                    },
+                    plotOptions: {
+                        column: {
+                            stacking: 'normal',
+                            dataLabels: {
+                                enabled: false
+                            }
+                        }
                     },
                     title: {
                         text: 'Join vs Leave'
                     },
                     xAxis: {
-                        categories: {{.ChartData.Categories}}
+                        type: "category"
                     },
-                    yAxis: {
-                        title: {
-                            text: 'Number of Join/Leave'
-                        }
-                    },
-                    series: [{
-                        name: 'Join',
-                        data: {{.ChartData.Join}}
-                    }, {
-                        name: 'Leave',
-                        data: {{.ChartData.Leave}}
-                    }]
+                    series: [{name: "Join", data: [{{.JoinArr}}]},
+                        {name: "Leave", data: [{{.LeaveArr}}]}]
                 });
             });
         </script>
